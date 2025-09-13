@@ -153,6 +153,7 @@ pub const IMMUTABLE: u64 = to_builtin!(25);
 pub const INCORRECT_AUTHORITY: u64 = to_builtin!(26);
 
 impl From<u64> for ProgramError {
+    #[inline(never)]
     fn from(error: u64) -> Self {
         match error {
             CUSTOM_ZERO => Self::Custom(0),
@@ -189,6 +190,7 @@ impl From<u64> for ProgramError {
 }
 
 impl From<ProgramError> for u64 {
+    #[inline(never)]
     fn from(error: ProgramError) -> Self {
         match error {
             ProgramError::InvalidArgument => INVALID_ARGUMENT,
@@ -241,6 +243,7 @@ pub trait ToStr {
 }
 
 impl ToStr for ProgramError {
+    #[inline(never)]
     fn to_str<E>(&self) -> &'static str
     where
         E: 'static + ToStr + TryFrom<u32>,

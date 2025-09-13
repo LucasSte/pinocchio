@@ -327,7 +327,6 @@ pub unsafe fn invoke_signed_unchecked(
     accounts: &[Account],
     signers_seeds: &[Signer],
 ) {
-    #[cfg(target_os = "solana")]
     {
         use crate::instruction::AccountMeta;
 
@@ -375,8 +374,6 @@ pub unsafe fn invoke_signed_unchecked(
         };
     }
 
-    #[cfg(not(target_os = "solana"))]
-    core::hint::black_box((instruction, accounts, signers_seeds));
 }
 
 /// Maximum size that can be set using [`set_return_data`].
@@ -391,13 +388,10 @@ pub const MAX_RETURN_DATA: usize = 1024;
 /// retrieved by the caller with [`get_return_data`].
 #[inline(always)]
 pub fn set_return_data(data: &[u8]) {
-    #[cfg(target_os = "solana")]
     unsafe {
         crate::syscalls::sol_set_return_data(data.as_ptr(), data.len() as u64)
     };
 
-    #[cfg(not(target_os = "solana"))]
-    core::hint::black_box(data);
 }
 
 /// Get the return data from an invoked program.
@@ -431,7 +425,6 @@ pub fn set_return_data(data: &[u8]) {
 /// [rdp]: https://docs.solanalabs.com/proposals/return-data
 #[inline]
 pub fn get_return_data() -> Option<ReturnData> {
-    #[cfg(target_os = "solana")]
     {
         const UNINIT_BYTE: core::mem::MaybeUninit<u8> = core::mem::MaybeUninit::<u8>::uninit();
         let mut data = [UNINIT_BYTE; MAX_RETURN_DATA];
@@ -455,9 +448,6 @@ pub fn get_return_data() -> Option<ReturnData> {
             })
         }
     }
-
-    #[cfg(not(target_os = "solana"))]
-    core::hint::black_box(None)
 }
 
 /// Struct to hold the return data from an invoked program.

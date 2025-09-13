@@ -5,7 +5,6 @@ pub mod lazy;
 
 pub use lazy::{InstructionContext, MaybeAccount};
 
-#[cfg(target_os = "solana")]
 pub use alloc::BumpAllocator;
 
 use core::{mem::size_of, slice::from_raw_parts};
@@ -179,7 +178,8 @@ macro_rules! align_pointer {
 ///
 /// The caller must ensure that the input buffer is valid, i.e., it represents the
 /// program input parameters serialized by the SVM loader.
-#[inline(always)]
+#[inline(never)]
+#[no_mangle]
 pub unsafe fn deserialize(
     mut input: *mut u8,
     mut accounts: *mut AccountInfo,
@@ -258,7 +258,6 @@ pub unsafe fn deserialize(
 macro_rules! default_panic_handler {
     () => {
         /// Default panic handler.
-        #[cfg(target_os = "solana")]
         #[no_mangle]
         fn custom_panic(info: &core::panic::PanicInfo<'_>) {
             // Panic reporting.
@@ -303,8 +302,6 @@ macro_rules! default_panic_handler {
 macro_rules! nostd_panic_handler {
     () => {
         /// A panic handler for `no_std`.
-        #[cfg(target_os = "solana")]
-        #[no_mangle]
         #[panic_handler]
         fn handler(info: &core::panic::PanicInfo<'_>) -> ! {
             if let Some(location) = info.location() {
@@ -323,14 +320,6 @@ macro_rules! nostd_panic_handler {
             }
         }
 
-        /// A panic handler for when the program is compiled on a target different than
-        /// `"solana"`.
-        ///
-        /// This links the `std` library, which will set up a default panic handler.
-        #[cfg(not(target_os = "solana"))]
-        mod __private_panic_handler {
-            extern crate std as __std;
-        }
     };
 }
 
@@ -340,7 +329,6 @@ macro_rules! nostd_panic_handler {
 #[macro_export]
 macro_rules! default_allocator {
     () => {
-        #[cfg(target_os = "solana")]
         #[global_allocator]
         static A: $crate::entrypoint::BumpAllocator = $crate::entrypoint::BumpAllocator {
             start: $crate::entrypoint::HEAP_START_ADDRESS as usize,
@@ -351,10 +339,6 @@ macro_rules! default_allocator {
         /// `"solana"`.
         ///
         /// This links the `std` library, which will set up a default global allocator.
-        #[cfg(not(target_os = "solana"))]
-        mod __private_alloc {
-            extern crate std as __std;
-        }
     };
 }
 
@@ -382,7 +366,6 @@ macro_rules! no_allocator {
 #[macro_export]
 macro_rules! no_allocator {
     () => {
-        #[cfg(target_os = "solana")]
         #[global_allocator]
         static A: $crate::entrypoint::NoAllocator = $crate::entrypoint::NoAllocator;
 
@@ -428,22 +411,12 @@ macro_rules! no_allocator {
             start
         }
 
-        /// A default allocator for when the program is compiled on a target different than
-        /// `"solana"`.
-        ///
-        /// This links the `std` library, which will set up a default global allocator.
-        #[cfg(not(target_os = "solana"))]
-        mod __private_alloc {
-            extern crate std as __std;
-        }
     };
 }
 
-#[cfg(target_os = "solana")]
 mod alloc {
-    //! The bump allocator used as the default rust heap when running programs.
-
-    extern crate alloc;
+    // //! The bump allocator used as the default rust heap when running programs.
+    // extern crate alloc;
 
     /// The bump allocator used as the default rust heap when running programs.
     pub struct BumpAllocator {
@@ -455,7 +428,7 @@ mod alloc {
     /// operating on the prescribed [`HEAP_START_ADDRESS`] and [`HEAP_LENGTH`]. Any
     /// other use may overflow and is thus unsupported and at one's own risk.
     #[allow(clippy::arithmetic_side_effects)]
-    unsafe impl alloc::alloc::GlobalAlloc for BumpAllocator {
+    unsafe impl core::alloc::GlobalAlloc for BumpAllocator {
         /// Allocates memory as a bump allocator.
         #[inline]
         unsafe fn alloc(&self, layout: core::alloc::Layout) -> *mut u8 {

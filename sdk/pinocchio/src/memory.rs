@@ -3,7 +3,6 @@
 //! Within the SBF environment, these are implemented as syscalls and executed by
 //! the runtime in native code.
 
-#[cfg(target_os = "solana")]
 use crate::syscalls;
 
 /// Like C `memcpy`.
@@ -34,11 +33,7 @@ use crate::syscalls;
 /// likely introduce undefined behavior.
 #[inline]
 pub unsafe fn sol_memcpy(dst: &mut [u8], src: &[u8], n: usize) {
-    #[cfg(target_os = "solana")]
     syscalls::sol_memcpy_(dst.as_mut_ptr(), src.as_ptr(), n as u64);
-
-    #[cfg(not(target_os = "solana"))]
-    core::hint::black_box((dst, src, n));
 }
 
 /// Copies the contents of one value to another.
@@ -62,7 +57,6 @@ pub unsafe fn sol_memcpy(dst: &mut [u8], src: &[u8], n: usize) {
 /// - `src` - Source reference to copy from
 #[inline]
 pub fn copy_val<T: ?Sized>(dst: &mut T, src: &T) {
-    #[cfg(target_os = "solana")]
     // SAFETY: dst and src are of same type therefore the size is the same
     unsafe {
         syscalls::sol_memcpy_(
@@ -71,9 +65,6 @@ pub fn copy_val<T: ?Sized>(dst: &mut T, src: &T) {
             core::mem::size_of_val(dst) as u64,
         );
     }
-
-    #[cfg(not(target_os = "solana"))]
-    core::hint::black_box((dst, src));
 }
 
 /// Like C `memmove`.
@@ -97,11 +88,7 @@ pub fn copy_val<T: ?Sized>(dst: &mut T, src: &T) {
 /// [`ptr::copy`]: https://doc.rust-lang.org/std/ptr/fn.copy.html
 #[inline]
 pub unsafe fn sol_memmove(dst: *mut u8, src: *const u8, n: usize) {
-    #[cfg(target_os = "solana")]
     syscalls::sol_memmove_(dst, src, n as u64);
-
-    #[cfg(not(target_os = "solana"))]
-    core::hint::black_box((dst, src, n));
 }
 
 /// Like C `memcmp`.
@@ -131,11 +118,7 @@ pub unsafe fn sol_memcmp(s1: &[u8], s2: &[u8], n: usize) -> i32 {
     #[allow(unused_mut)]
     let mut result = 0;
 
-    #[cfg(target_os = "solana")]
     syscalls::sol_memcmp_(s1.as_ptr(), s2.as_ptr(), n as u64, &mut result as *mut i32);
-
-    #[cfg(not(target_os = "solana"))]
-    core::hint::black_box((s1, s2, n, result));
 
     result
 }
@@ -164,9 +147,5 @@ pub unsafe fn sol_memcmp(s1: &[u8], s2: &[u8], n: usize) -> i32 {
 /// undefined behavior.
 #[inline]
 pub unsafe fn sol_memset(s: &mut [u8], c: u8, n: usize) {
-    #[cfg(target_os = "solana")]
     syscalls::sol_memset_(s.as_mut_ptr(), c, n as u64);
-
-    #[cfg(not(target_os = "solana"))]
-    core::hint::black_box((s, c, n));
 }

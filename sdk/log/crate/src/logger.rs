@@ -1,6 +1,5 @@
 use core::{mem::MaybeUninit, ops::Deref, slice::from_raw_parts};
 
-#[cfg(all(target_os = "solana", not(target_feature = "static-syscalls")))]
 mod syscalls {
     // Syscalls provided by the SVM runtime (SBPFv0, SBPFv1 and SBPFv2).
     extern "C" {
@@ -10,23 +9,7 @@ mod syscalls {
     }
 }
 
-#[cfg(all(target_os = "solana", target_feature = "static-syscalls"))]
-mod syscalls {
-    // Syscalls provided by the SVM runtime (SBPFv3 and newer).
-    unsafe extern "C" fn sol_log_(message: *const u8, length: u64) {
-        let syscall: extern "C" fn(*const u8, u64) = core::mem::transmute(544561597u64); // murmur32 hash of "sol_log_"
-        syscall(message, length)
-    }
 
-    pub(crate) fn sol_memcpy_(dest: *mut u8, src: *const u8, n: u64) {
-        let syscall: extern "C" fn(*mut u8, *const u8, u64) =
-            unsafe { core::mem::transmute(1904002211u64) }; // murmur32 hash of "sol_memcpy_"
-        syscall(dest, src, n)
-    }
-}
-
-#[cfg(not(target_os = "solana"))]
-extern crate std;
 
 /// Bytes for a truncated `str` log message.
 const TRUNCATED_SLICE: [u8; 3] = [b'.', b'.', b'.'];
@@ -134,16 +117,10 @@ impl<const BUFFER: usize> Logger<BUFFER> {
 /// Log a message.
 #[inline(always)]
 pub fn log_message(message: &[u8]) {
-    #[cfg(target_os = "solana")]
     // SAFETY: the message is always a valid pointer to a slice of bytes
     // and `sol_log_` is a syscall.
     unsafe {
         syscalls::sol_log_(message.as_ptr(), message.len() as u64);
-    }
-    #[cfg(not(target_os = "solana"))]
-    {
-        let message = core::str::from_utf8(message).unwrap();
-        std::println!("{}", message);
     }
 }
 
@@ -272,7 +249,6 @@ macro_rules! impl_log_for_unsigned_integer {
                             let source = digits.as_ptr().add(offset);
                             let ptr = buffer.as_mut_ptr();
 
-                            #[cfg(target_os = "solana")]
                             {
                                 if precision == 0 {
                                     syscalls::sol_memcpy_(
@@ -297,27 +273,6 @@ macro_rules! impl_log_for_unsigned_integer {
                                         ptr.add(integer_part + 1) as *mut _,
                                         source.add(integer_part) as *const _,
                                         fraction as u64,
-                                    );
-                                }
-                            }
-
-                            #[cfg(not(target_os = "solana"))]
-                            {
-                                if precision == 0 {
-                                    core::ptr::copy_nonoverlapping(source, ptr, written);
-                                } else {
-                                    // Integer part of the number.
-                                    let integer_part = written - (fraction + 1);
-                                    core::ptr::copy_nonoverlapping(source, ptr, integer_part);
-
-                                    // Decimal point.
-                                    (ptr.add(integer_part) as *mut u8).write(b'.');
-
-                                    // Fractional part of the number.
-                                    core::ptr::copy_nonoverlapping(
-                                        source.add(integer_part),
-                                        ptr.add(integer_part + 1),
-                                        fraction,
                                     );
                                 }
                             }

@@ -6,7 +6,6 @@ use core::{
     slice::{from_raw_parts, from_raw_parts_mut},
 };
 
-#[cfg(target_os = "solana")]
 use crate::syscalls::sol_memset_;
 
 use crate::{program_error::ProgramError, pubkey::Pubkey, ProgramResult};
@@ -481,14 +480,11 @@ impl AccountInfo {
             let len_increase = new_len.saturating_sub(current_len);
             if len_increase > 0 {
                 unsafe {
-                    #[cfg(target_os = "solana")]
                     sol_memset_(
                         &mut data[current_len..] as *mut _ as *mut u8,
                         0,
                         len_increase as u64,
                     );
-                    #[cfg(not(target_os = "solana"))]
-                    core::ptr::write_bytes(data.as_mut_ptr().add(current_len), 0, len_increase);
                 }
             }
         }
@@ -554,7 +550,6 @@ impl AccountInfo {
         // - 8 bytes for the data_len
         //
         // So we can zero out them directly.
-        #[cfg(target_os = "solana")]
         sol_memset_(self.data_ptr().sub(48), 0, 48);
     }
 

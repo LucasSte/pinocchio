@@ -19,13 +19,9 @@ pub type Pubkey = [u8; PUBKEY_BYTES];
 /// Log a `Pubkey` from a program.
 #[inline(always)]
 pub fn log(pubkey: &Pubkey) {
-    #[cfg(target_os = "solana")]
     unsafe {
         crate::syscalls::sol_log_pubkey(pubkey as *const _ as *const u8)
     };
-
-    #[cfg(not(target_os = "solana"))]
-    core::hint::black_box(pubkey);
 }
 
 /// Find a valid [program derived address][pda] and its corresponding bump seed.
@@ -118,7 +114,6 @@ pub fn find_program_address(seeds: &[&[u8]], program_id: &Pubkey) -> (Pubkey, u8
 /// [`find_program_address`]: #find_program_address
 #[inline]
 pub fn try_find_program_address(seeds: &[&[u8]], program_id: &Pubkey) -> Option<(Pubkey, u8)> {
-    #[cfg(target_os = "solana")]
     {
         let mut bytes = core::mem::MaybeUninit::<[u8; PUBKEY_BYTES]>::uninit();
         let mut bump_seed = u8::MAX;
@@ -137,12 +132,6 @@ pub fn try_find_program_address(seeds: &[&[u8]], program_id: &Pubkey) -> Option<
             crate::SUCCESS => Some((unsafe { bytes.assume_init() }, bump_seed)),
             _ => None,
         }
-    }
-
-    #[cfg(not(target_os = "solana"))]
-    {
-        core::hint::black_box((seeds, program_id));
-        None
     }
 }
 
@@ -172,7 +161,6 @@ pub fn create_program_address(
     program_id: &Pubkey,
 ) -> Result<Pubkey, ProgramError> {
     // Call via a system call to perform the calculation
-    #[cfg(target_os = "solana")]
     {
         let mut bytes = core::mem::MaybeUninit::<[u8; PUBKEY_BYTES]>::uninit();
 
@@ -190,12 +178,6 @@ pub fn create_program_address(
             crate::SUCCESS => Ok(unsafe { bytes.assume_init() }),
             _ => Err(result.into()),
         }
-    }
-
-    #[cfg(not(target_os = "solana"))]
-    {
-        core::hint::black_box((seeds, program_id));
-        panic!("create_program_address is only available on target `solana`")
     }
 }
 
